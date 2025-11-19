@@ -20,17 +20,17 @@ void setup() {
 }
 
 void loop() {
-  clientLoop();
-  delay(100);
   String tagID = "";
   if (CheckRFID(tagID)) {
     if (tagID != ultimaTargeta) {
-      if(ComprovacioWifi == 1 && ComprovacioAws == 1){
-        digitalWrite(ledVerde, HIGH);
-        digitalWrite(ledRojo, LOW);
-        delay(4500);
-        digitalWrite(ledVerde, LOW);
-      }
+      leerMensaje();
+      Serial.print("Mensaje guardado: ");
+      Serial.println(ultimoMensaje);  // Aquí sí se imprime el mensaje recibido
+      delay(4500);
+      digitalWrite(ledVerde, HIGH);
+      digitalWrite(ledRojo, LOW);
+      delay(4500);
+      digitalWrite(ledVerde, LOW);
       Serial.println("TARGETA DETECTADA!");
       Serial.print("ID: ");
       Serial.println(tagID);
