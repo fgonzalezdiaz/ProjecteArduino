@@ -1,0 +1,19 @@
+{
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 3309,
+            "driver": "MySQL",
+            "name": "databaseitic",
+            "database": "information_schema",
+            "username": "root",
+            "askForPassword": true
+        }
+    ]
+}

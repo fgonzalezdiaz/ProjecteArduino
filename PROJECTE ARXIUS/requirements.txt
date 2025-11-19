@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+databases
+mysql-connector-python
+sqlalchemy
+aiomysql
+pydantic
+paho-mqtt
