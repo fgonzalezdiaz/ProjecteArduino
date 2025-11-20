@@ -17,13 +17,40 @@ String ultimoMensaje = "";
 // ============================= 
 
 void messageHandler(String &topic, String &payload) {
-  ultimoMensaje = ""; 
-  ultimoMensaje = payload;
+    if (payload != "") {   // O también: if (payload != "")
+      hayMensaje = true;
+      Serial.print("Payload: ");
+      Serial.println(payload);
+    } else {
+      hayMensaje = false;
+    }
 }
 
 void leerMensaje() {
-  client.loop(); // aquí procesas mensajes pendientes
+  client.loop(); // aquí procesas mensajes pendientes (usa si quieres procesar puntual)
 }
+
+
+// =============================
+// PUBLICAR MENSAJES
+// =============================
+// Publica un mensaje en el topic indicado. Devuelve true si publish parece OK.
+bool publishMessage(const String &topic, const String &payload) {
+  if (!client.connected()) {
+    Serial.println("MQTT No conectado, intentando reconectar...");
+    if (!client.connect(THINGNAME)) { // Intentamos reconectar rápido 
+      Serial.println("MQTT Reconexión fallida");
+      return false;
+    }
+  }
+
+  bool ok = client.publish(topic.c_str(), payload.c_str());
+  if (!ok) {
+    Serial.println("MQTT publish no acceptat");
+  }
+  return ok;
+}
+
 
 // =============================
 // SETUP de AWS IoT

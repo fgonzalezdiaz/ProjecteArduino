@@ -3,7 +3,7 @@ int ComprovacioWifi = 0;
 int ComprovacioAws = 0;
 #define ledVerde 2
 #define ledRojo 15
-
+#define TOPIC "test/topic"
 
 void setup() {
   Serial.begin(115200);
@@ -20,16 +20,24 @@ void setup() {
 }
 
 void loop() {
+  // Procesar mensajes MQTT frecuentemente
+  clientLoop();
+
   String tagID = "";
   if (CheckRFID(tagID)) {
     if (tagID != ultimaTargeta) {
-      leerMensaje();
-      Serial.print("Mensaje guardado: ");
-      Serial.println(ultimoMensaje);  // Aquí sí se imprime el mensaje recibido
-      delay(4500);
+      // Publicar el ID de la tarjeta al topic MQTT (ejemplo JSON)
+      String payload = "{\"ID\":\"" + tagID + "\"}";
+      if (publishMessage(TOPIC, payload)) {
+        Serial.println("Missatge Enviat");
+        // Esperar hasta 20 segundos por una respuesta
+        waitForResponse(20000);
+      } else {
+        Serial.println("Error : Missatge no enviat");
+      }
       digitalWrite(ledVerde, HIGH);
       digitalWrite(ledRojo, LOW);
-      delay(4500);
+      delay(1000);
       digitalWrite(ledVerde, LOW);
       Serial.println("TARGETA DETECTADA!");
       Serial.print("ID: ");
