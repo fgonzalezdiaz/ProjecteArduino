@@ -36,7 +36,7 @@ def on_message(client, userdata, msg):
     # Intenta parsear como JSON
     payload_json = json.loads(payload_str)
     # Extrae el valor del campo "mensaje"
-    last_message = payload_json.get("mensaje", payload_str)
+    last_message = payload_json.get("message", payload_str)
     print(last_message)
 
 def create_mqtt_client():
@@ -71,7 +71,7 @@ def publish_message(topic: str, message: str):
             json_message = message
         except json.JSONDecodeError:
             # Si no es JSON, lo convierte a JSON
-            json_message = json.dumps({"mensaje": message})
+            json_message = json.dumps({"message": message})
         
         # Publica el mensaje en formato JSON
         mqtt_client.publish(topic, json_message, qos=1)
