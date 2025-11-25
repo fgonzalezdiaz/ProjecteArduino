@@ -1,6 +1,5 @@
 String ultimaTargeta = "";
-int ComprovacioWifi = 0;
-int ComprovacioAws = 0;
+bool hayMensaje = false;
 #define ledVerde 2
 #define ledRojo 15
 #define TOPIC "test/topic"
@@ -20,8 +19,6 @@ void setup() {
 }
 
 void loop() {
-  // Procesar mensajes MQTT frecuentemente
-  clientLoop();
 
   String tagID = "";
   if (CheckRFID(tagID)) {
@@ -30,10 +27,11 @@ void loop() {
       String payload = "{\"ID\":\"" + tagID + "\"}";
       if (publishMessage(TOPIC, payload)) {
         Serial.println("Missatge Enviat");
-        // Esperar hasta 20 segundos por una respuesta
-        waitForResponse(20000);
       } else {
         Serial.println("Error : Missatge no enviat");
+      }
+      while(hayMensaje == false){
+          leerMensaje();
       }
       digitalWrite(ledVerde, HIGH);
       digitalWrite(ledRojo, LOW);
