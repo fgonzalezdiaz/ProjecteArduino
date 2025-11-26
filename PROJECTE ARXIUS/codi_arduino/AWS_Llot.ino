@@ -5,29 +5,49 @@
 #include "WiFi.h"
 
 // Topic MQTT donde recibes mensajes
-#define AWS_IOT_SUBSCRIBE_TOPIC "test/topic"
+#define AWS_IOT_SUBSCRIBE_TOPIC "test/topic/response"
 
 WiFiClientSecure net = WiFiClientSecure();
 MQTTClient client = MQTTClient(256);
 
 String ultimoMensaje = "";
+extern bool hayMensaje;
+extern String comprovacio;
 
 // =============================
 // CALLBACK: Cuando llega mensaje
 // ============================= 
 
 void messageHandler(String &topic, String &payload) {
-    if (payload != "") {   // O también: if (payload != "")
-      hayMensaje = true;
-      Serial.print("Payload: ");
-      Serial.println(payload);
-    } else {
-      hayMensaje = false;
+    // SI EL MENSAJE ES EL MISMO QUE HE ENVIADO, IGNORARLO
+    if (payload.indexOf("\"tagID\"") >= 0) {
+        // Mensaje que he enviado yo → ignorar
+        return;
     }
+
+    StaticJsonDocument<100> doc;
+    DeserializationError error = deserializeJson(doc, payload);
+
+    if(!error){
+      comprovacio = String(doc["message"].as<const char*>());   // 0 o 1
+    }else {
+      comprovacio = -1;
+    }
+
+    // Mensaje que viene REALMENTE de AWS
+    Serial.print("Mensaje AWS: ");
+    Serial.println(payload);
+
+    hayMensaje = true;
 }
 
 void leerMensaje() {
   client.loop(); // aquí procesas mensajes pendientes (usa si quieres procesar puntual)
+  if (!client.connected()) {
+      Serial.println("MQTT desconectado, reconectando...");
+      client.connect(THINGNAME);
+      client.subscribe("test/topic/response");
+  }
 }
 
 
@@ -38,15 +58,17 @@ void leerMensaje() {
 bool publishMessage(const String &topic, const String &payload) {
   if (!client.connected()) {
     Serial.println("MQTT No conectado, intentando reconectar...");
-    if (!client.connect(THINGNAME)) { // Intentamos reconectar rápido 
+    // Intentar reconectar rápido (puedes ajustar/reemplazar con tu propia lógica)
+    if (!client.connect(THINGNAME)) {
       Serial.println("MQTT Reconexión fallida");
       return false;
     }
   }
 
   bool ok = client.publish(topic.c_str(), payload.c_str());
+  Serial.print("MQTT Publicado en "); Serial.print(topic); Serial.print(": "); Serial.println(payload);
   if (!ok) {
-    Serial.println("MQTT publish no acceptat");
+    Serial.println("MQTT publish() no ha podido enviar id targeta");
   }
   return ok;
 }
@@ -97,13 +119,3 @@ void SetupAWS() {
 
   Serial.println("✅ Conectado a AWS IoT!");
 }
-
-// =============================
-// LOOP PRINCIPAL
-// =============================
-void clientLoop() {
-  client.loop();   // <-- NECESARIO para recibir mensajes
-
-  delay(10);
-}
-

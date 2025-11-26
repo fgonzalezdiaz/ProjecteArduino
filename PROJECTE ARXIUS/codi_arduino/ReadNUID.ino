@@ -1,8 +1,11 @@
 String ultimaTargeta = "";
 bool hayMensaje = false;
+String comprovacio = "-1";
+int comprovar_int;
+#define TOPIC "test/topic"
 #define ledVerde 2
 #define ledRojo 15
-#define TOPIC "test/topic"
+
 
 void setup() {
   Serial.begin(115200);
@@ -23,23 +26,40 @@ void loop() {
   String tagID = "";
   if (CheckRFID(tagID)) {
     if (tagID != ultimaTargeta) {
+      
       // Publicar el ID de la tarjeta al topic MQTT (ejemplo JSON)
-      String payload = "{\"ID\":\"" + tagID + "\"}";
+      String payload = "{\"tagID\":\"" + tagID + "\"}";
       if (publishMessage(TOPIC, payload)) {
-        Serial.println("Missatge Enviat");
       } else {
-        Serial.println("Error : Missatge no enviat");
+        Serial.println("[MQTT] Envío fallido");
       }
-      while(hayMensaje == false){
-          leerMensaje();
+
+      hayMensaje = false;
+      
+      while(!hayMensaje){
+          leerMensaje();   
+          delay(10);
       }
-      digitalWrite(ledVerde, HIGH);
-      digitalWrite(ledRojo, LOW);
-      delay(1000);
-      digitalWrite(ledVerde, LOW);
+
       Serial.println("TARGETA DETECTADA!");
       Serial.print("ID: ");
       Serial.println(tagID);
+      comprovar_int = comprovacio.toInt();
+      Serial.println(comprovar_int);
+      
+      if (comprovar_int == 1) {
+         digitalWrite(ledVerde, HIGH);
+         digitalWrite(ledRojo, LOW);
+         delay(1000);
+         digitalWrite(ledVerde, LOW);
+      } else if (comprovar_int == 0) {
+        digitalWrite(ledVerde, LOW);
+        digitalWrite(ledRojo, HIGH);
+        delay(2000);
+        digitalWrite(ledRojo, LOW);
+      } else {
+        Serial.println("Programma apagat");
+      }
       ultimaTargeta = tagID;
     }else{
       Serial.println("ERROR : TARGETA REPETIDA");
