@@ -1,17 +1,26 @@
+import os
 import ssl
+from databases import Database
 import paho.mqtt.client as mqtt
 import json
+from fastapi import FastAPI, Depends
+from app import services
+from sqlalchemy.orm import Session
+from .database import get_db
+from app.database import Session, engine
+
 
 AWS_IOT_ENDPOINT = "a1k1syidbqlxng-ats.iot.us-east-1.amazonaws.com"
 CLIENT_ID = "client_1"
-PATH_TO_CERTIFICATE = "certificats/d8eb1dca03956f52a96d9a0f600d2f7fd10276d1ca2ebe4a2fd47e2c75d9cb86-certificate.pem.crt"
-PATH_TO_PRIVATE_KEY = "certificats/d8eb1dca03956f52a96d9a0f600d2f7fd10276d1ca2ebe4a2fd47e2c75d9cb86-private.pem.key"
-PATH_TO_ROOT_CA = "certificats/AmazonRootCA1.pem"
+PATH_TO_CERTIFICATE = r"C:\Users\Francisco\Desktop\ITIC BCN\DAM2\Projecte\GithubProjecte\ProjecteArduino\PROJECTE ARXIUS\certificats\d8eb1dca03956f52a96d9a0f600d2f7fd10276d1ca2ebe4a2fd47e2c75d9cb86-certificate.pem.crt"
+PATH_TO_PRIVATE_KEY = r"C:\Users\Francisco\Desktop\ITIC BCN\DAM2\Projecte\GithubProjecte\ProjecteArduino\PROJECTE ARXIUS\certificats\d8eb1dca03956f52a96d9a0f600d2f7fd10276d1ca2ebe4a2fd47e2c75d9cb86-private.pem.key"
+PATH_TO_ROOT_CA = r"C:\Users\Francisco\Desktop\ITIC BCN\DAM2\Projecte\GithubProjecte\ProjecteArduino\PROJECTE ARXIUS\certificats\AmazonRootCA1.pem"
 TOPIC = "test/topic"
-
+TOPIC_RESPONSE = "test/topic/response"
 mqtt_client = None
 connection_status = "Desconectado"
 last_message = None
+
 
 def on_connect(client, userdata, flags, rc):
     global connection_status
@@ -29,6 +38,27 @@ def on_disconnect(client, userdata, rc):
     if rc != 0:
         print(f"Desconexión inesperada: {rc}")
 
+def comprova_message(message: str):
+    messageResponse = None
+    # Evita procesar mensajes repetidos
+    if messageResponse == message:
+        return
+    messageResponse = message
+    # Abrimos sesión de BD
+    # Porque abrimos la session aqui en vez de usar la de database?
+    # Porque en database el "yield db" devuelve un generador, no una session
+    # lo que hace imposible para mysqlalchemy ejecutar un execute.
+    # Por eso creamos la sesion aqui directamente.
+    db = Session(engine)
+    try: 
+
+        if not services.mqtt_get_user_id(message, db): # EL ERROR ESTA EN LA CONSULTA
+            publish_message(TOPIC_RESPONSE, "1")
+        else:
+            publish_message(TOPIC_RESPONSE, "0")
+    finally:
+        db.close()
+
 def on_message(client, userdata, msg):
     global last_message
     # Decodifica el payload a string
@@ -36,8 +66,10 @@ def on_message(client, userdata, msg):
     # Intenta parsear como JSON
     payload_json = json.loads(payload_str)
     # Extrae el valor del campo "mensaje"
-    last_message = payload_json.get("message", payload_str)
+    last_message = payload_json.get("tagID", payload_str)
     print(last_message)
+    comprova_message(last_message)
+
 
 def create_mqtt_client():
     global mqtt_client
@@ -57,29 +89,52 @@ def get_connection_status():
     return connection_status
 
 def get_last_message():
+    #Devuelve un string con el mensaje, una vez haya pasado los controles.
+    
+    # Strings vacías, sólo espacios o nulls
+    if last_message is None and isinstance(last_message, str) and last_message.strip() == "":
+        return "empty"
+
+    # Cualquier otro valor se devuelve tal cual
     return last_message
 
-def publish_message(topic: str, message: str):
+# def publish_message(topico: str, message: str):
+#     global mqtt_client
+#     if mqtt_client is None:
+#         return False
+#     try:
+#         # Convierte el mensaje a JSON si no lo es ya
+#         try:
+#             # Intenta parsearlo como JSON
+#             json.loads(message)
+#             json_message = message
+#         except json.JSONDecodeError:
+#             # Si no es JSON, lo convierte a JSON
+#             json_message = json.dumps({"message": message})
+        
+#         # Publica el mensaje en formato JSON
+#         mqtt_client.publish(topico, json_message, qos=1)
+#         print(f"Mensaje publicado en {topico}: {json_message}")
+#         return True
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return False
+def publish_message(topico: str, message: str):
     global mqtt_client
     if mqtt_client is None:
         return False
     try:
-        # Convierte el mensaje a JSON si no lo es ya
-        try:
-            # Intenta parsearlo como JSON
-            json.loads(message)
-            json_message = message
-        except json.JSONDecodeError:
-            # Si no es JSON, lo convierte a JSON
-            json_message = json.dumps({"message": message})
-        
-        # Publica el mensaje en formato JSON
-        mqtt_client.publish(topic, json_message, qos=1)
-        print(f"Mensaje publicado en {topic}: {json_message}")
+        # Siempre enviamos un JSON con clave "message"
+        payload = {"message": message}
+
+        mqtt_client.publish(topico, json.dumps(payload), qos=1)
+        print(f"Mensaje publicado en {topico}: {payload}")
         return True
+
     except Exception as e:
         print(f"Error: {e}")
         return False
+
 
 if __name__ == "__main__":
     create_mqtt_client()

@@ -21,7 +21,8 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=mysql+mysqlconnector://root:123456@db:3309/databaseitic
+      DATABASE_URL: mysql+mysqlconnector://root:123456@db:3309/databaseitic
+
 
 volumes:
   db_data:

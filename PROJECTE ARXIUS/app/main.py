@@ -2,16 +2,17 @@ from fastapi import Depends, FastAPI, HTTPException
 from databases import Database
 from typing import List
 import os
-from app import services
-from app import models
-from app.mqtt_client import get_connection_status, create_mqtt_client, get_last_message, publish_message
+
+from . import services
+from . import models
+from .mqtt_client import get_connection_status, create_mqtt_client, get_last_message, publish_message
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from app.database import get_db
-DATABASE_URL = os.getenv("DATABASE_URL")
+from .database import get_db
 
-database = Database(DATABASE_URL)
+
+
 app = FastAPI()
 
 # Modelo para publicar mensajes MQTT
@@ -34,7 +35,9 @@ async def read_root():
 
 @app.get("/api/allUsers")
 def read_all_users(db: Session = Depends(get_db)):
+    if(db is None): return "Hola"    
     return services.get_all_users(db)
+
 
 @app.get("/api/test-mqtt-connection")
 def test_mqtt_connection():
@@ -54,3 +57,5 @@ def get_mqtt_message():
 def post_mqtt_message(data: MQTTMessage):
     success = publish_message(data.topic, data.message)
     return {"success": success, "topic": data.topic, "message": data.message}
+
+

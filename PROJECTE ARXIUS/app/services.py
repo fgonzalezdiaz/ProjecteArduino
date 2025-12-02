@@ -9,6 +9,7 @@ mqtt_client = None
 def get_all_users(db: Session):
     return crud.get_usuaris(db)
 
+
 def get_connection():
     global mqtt_client
     try:
@@ -32,3 +33,10 @@ def mqtt_post_message(topic : str, message : str):
         return "Missatge enviat correctament"
     else:
         return "Missatge no enviat"
+
+    
+def mqtt_get_user_id(id : str, db: Session):
+    user = crud.get_usuari(db, id)
+    return bool(user)
+
+    
