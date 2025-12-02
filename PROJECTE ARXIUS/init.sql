@@ -18,3 +18,4 @@ CREATE TABLE IF NOT EXISTS present (
     PRIMARY KEY (id_usuari, horari),
     FOREIGN KEY (id_usuari) REFERENCES usuaris(id)
 );
+

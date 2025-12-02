@@ -50,3 +50,7 @@ def marcar_presencia(db: Session, id_usuari: int):
     db.commit()
     return True
 
+# def comprova_nivell_acces(db: Session, nivell_acces: int) -> bool:
+#     consulta = text("SELECT 1 FROM zones WHERE nivell_acces = :nivell_acces LIMIT 1")
+#     result = db.execute(consulta, {"nivell_acces": nivell_acces}).first()
+#     return result is not None
