@@ -52,10 +52,10 @@ def comprova_message(message: str):
     db = Session(engine)
     try: 
 
-        if not services.mqtt_get_user_id(message, db): # EL ERROR ESTA EN LA CONSULTA
-            publish_message(TOPIC_RESPONSE, "1")
+        if not services.mqtt_get_user_id(message, db):
+            publish_message(TOPIC_RESPONSE, "0", message)
         else:
-            publish_message(TOPIC_RESPONSE, "0")
+            publish_message(TOPIC_RESPONSE, "1", message)
     finally:
         db.close()
 
@@ -98,29 +98,15 @@ def get_last_message():
     # Cualquier otro valor se devuelve tal cual
     return last_message
 
-# def publish_message(topico: str, message: str):
-#     global mqtt_client
-#     if mqtt_client is None:
-#         return False
-#     try:
-#         # Convierte el mensaje a JSON si no lo es ya
-#         try:
-#             # Intenta parsearlo como JSON
-#             json.loads(message)
-#             json_message = message
-#         except json.JSONDecodeError:
-#             # Si no es JSON, lo convierte a JSON
-#             json_message = json.dumps({"message": message})
-        
-#         # Publica el mensaje en formato JSON
-#         mqtt_client.publish(topico, json_message, qos=1)
-#         print(f"Mensaje publicado en {topico}: {json_message}")
-#         return True
-#     except Exception as e:
-#         print(f"Error: {e}")
-#         return False
-def publish_message(topico: str, message: str):
+def publish_message(topico: str, message: str, id: str):
     global mqtt_client
+    if(message == "1") :
+        db = Session(engine)
+        try: 
+            services.publica_present(db, id)
+        finally:
+            db.close()
+
     if mqtt_client is None:
         return False
     try:

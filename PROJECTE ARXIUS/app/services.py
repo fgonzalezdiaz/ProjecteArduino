@@ -37,6 +37,8 @@ def mqtt_post_message(topic : str, message : str):
     
 def mqtt_get_user_id(id : str, db: Session):
     user = crud.get_usuari(db, id)
+    
     return bool(user)
 
-    
+def publica_present(db : Session, id : str):
+    crud.marcar_presencia(db, id)

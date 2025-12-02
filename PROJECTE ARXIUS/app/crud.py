@@ -2,7 +2,11 @@ from typing import List
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from . import database, models, schemas
-
+from sqlalchemy import text
+from datetime import datetime
+from sqlalchemy import text
+from datetime import datetime
+from sqlalchemy.orm import Session
 # Usuari
 def create_usuari(db: Session, usuari: schemas.UsuariCreate):
     db_usuari = models.Usuari(nom=usuari.nom, nivell=usuari.nivell)
@@ -30,3 +34,19 @@ def get_usuari(db: Session, id: str):
         "nom": fila.nom,
         "nivell": fila.nivell
     }
+
+
+def marcar_presencia(db: Session, id_usuari: int):
+    # Format: dia/mes/any HH:MM
+    horari_actual = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+    consulta = text("""
+        INSERT INTO present (id_usuari, horari)
+        VALUES (:id_usuari, :horari)
+        ON DUPLICATE KEY UPDATE id_usuari = id_usuari
+    """)
+
+    db.execute(consulta, {"id_usuari": id_usuari, "horari": horari_actual})
+    db.commit()
+    return True
+
