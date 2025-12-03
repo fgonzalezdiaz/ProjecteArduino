@@ -3,7 +3,9 @@ use databaseitic;
 CREATE TABLE IF NOT EXISTS usuaris (
     id varchar(30) PRIMARY KEY,
     nom VARCHAR(100) NOT NULL,
-    nivell INT NOT NULL
+    nivell INT NOT NULL,
+    email VARCHAR(100) NOT NULL unique,
+    contrasenya VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS zones (
