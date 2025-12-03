@@ -4,7 +4,7 @@
 #include <ArduinoJson.h>
 #include "WiFi.h"
 
-// Topic MQTT donde recibes mensajes
+// Topic MQTT on es reb la resposta d’AWS
 #define AWS_IOT_SUBSCRIBE_TOPIC "test/topic/response"
 
 WiFiClientSecure net = WiFiClientSecure();
@@ -14,57 +14,51 @@ String ultimoMensaje = "";
 extern bool hayMensaje;
 extern String comprovacio;
 
-// =============================
-// CALLBACK: Cuando llega mensaje
-// ============================= 
 
+
+// CALLBACK: Quan arriba un missatge MQTT
 void messageHandler(String &topic, String &payload) {
-    // SI EL MENSAJE ES EL MISMO QUE HE ENVIADO, IGNORARLO
+    // Si el missatge conté "tagID", vol dir que és un que ha enviat el dispositiu
+    // No l'hem de processar com a resposta
     if (payload.indexOf("\"tagID\"") >= 0) {
-        // Mensaje que he enviado yo → ignorar
-        return;
+        return; // Ignorar missatge propi
     }
 
+    // Document JSON per deserialitzar el payload rebut
     StaticJsonDocument<100> doc;
     DeserializationError error = deserializeJson(doc, payload);
 
+    // Si la deserialització ha estat correcta, agafar el valor "message" 0 o 1
     if(!error){
       comprovacio = String(doc["message"].as<const char*>());   // 0 o 1
     }else {
-      comprovacio = -1;
+      comprovacio = "-1"; // Missatge invàlid
     }
-
-    // Mensaje que viene REALMENTE de AWS
-    Serial.print("Mensaje AWS: ");
-    Serial.println(payload);
-
+    
+    // Indicar que ja tenim resposta
     hayMensaje = true;
 }
 
 void leerMensaje() {
-  client.loop(); // aquí procesas mensajes pendientes (usa si quieres procesar puntual)
-  if (!client.connected()) {
-      Serial.println("MQTT desconectado, reconectando...");
-      client.connect(THINGNAME);
-      client.subscribe("test/topic/response");
-  }
+  client.loop(); // Processa missatges entrants (només si s'anomena manualment)
 }
 
 
-// =============================
-// PUBLICAR MENSAJES
-// =============================
-// Publica un mensaje en el topic indicado. Devuelve true si publish parece OK.
+// PUBLICAR MISSATGES MQTT
+// Publica un missatge en el topic indicat.
+// Retorna true si el publish ha anat bé.
 bool publishMessage(const String &topic, const String &payload) {
+  // Si estem desconnectats, intentar reconnectar abans de publicar
   if (!client.connected()) {
-    Serial.println("MQTT No conectado, intentando reconectar...");
-    // Intentar reconectar rápido (puedes ajustar/reemplazar con tu propia lógica)
-    if (!client.connect(THINGNAME)) {
-      Serial.println("MQTT Reconexión fallida");
-      return false;
-    }
+      Serial.println("[MQTT] Intentando reconexión antes de publicar...");
+      reconnectMQTT();
+      if (!client.connected()) {
+          Serial.println("[MQTT] Fallo en la reconexión, no se pudo publicar.");
+          return false;
+      }
   }
 
+  // Enviar el missatge
   bool ok = client.publish(topic.c_str(), payload.c_str());
   Serial.print("MQTT Publicado en "); Serial.print(topic); Serial.print(": "); Serial.println(payload);
   if (!ok) {
@@ -74,11 +68,34 @@ bool publishMessage(const String &topic, const String &payload) {
 }
 
 
-// =============================
-// SETUP de AWS IoT
-// =============================
+// RECONEXIÓ AMB AWS MQTT
+void reconnectMQTT() {
+  // Si ja està connectat, no fer res
+  if (client.connected()) {
+    return; 
+  }
+
+  // Intentar connectar fins que AWS IoT respongui
+  while (!client.connect(THINGNAME)) {
+    Serial.print(".");
+    delay(1000); // Espera 1 segundo entre intentos
+  }
+
+  // Un cop connectat, tornar a subscriure's al topic
+  if (client.connected()) {
+    Serial.println("\n Reconectado a AWS IoT!");
+    client.subscribe(AWS_IOT_SUBSCRIBE_TOPIC);
+    Serial.println("⌛ ESPERANT TARGETA RFID...");
+  } else {
+    Serial.println("Fallo en la reconexión a AWS IoT.");
+  }
+}
+
+
+// SETUP D'AWS IoT
 void SetupAWS() {
 
+  // Configurar WiFi en mode client
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
@@ -89,33 +106,33 @@ void SetupAWS() {
   }
   Serial.println("\nWiFi conectado!");
 
-  // Configurar certificados
+  // Carregar certificats de seguretat per AWS IoT
   net.setCACert(AWS_CERT_CA);
   net.setCertificate(AWS_CERT_CRT);
   net.setPrivateKey(AWS_CERT_PRIVATE);
 
-  // Configurar cliente MQTT contra AWS IoT
+  // Crear connexió MQTT segura contra AWS
   client.begin(AWS_IOT_ENDPOINT, 8883, net);
 
-  // Asignar callback de mensajes
+  // Assignar funció callback per missatges rebuts
   client.onMessage(messageHandler);
 
   Serial.println("Conectando a AWS IoT...");
 
-  // Intentar conexión MQTT
+  // Intentar connectar via MQTT
   while (!client.connect(THINGNAME)) {
     Serial.print(".");
     delay(500);
   }
 
   if (!client.connected()) {
-    Serial.println("❌ Tiempo de espera agotado conectando AWS IoT");
+    Serial.println("Tiempo de espera agotado conectando AWS IoT");
     return;
   }
 
-  // Suscribirse al topic
+  // Subscripció al topic de resposta
   client.subscribe(AWS_IOT_SUBSCRIBE_TOPIC);
-  Serial.println("📡 Suscrito al topic: " AWS_IOT_SUBSCRIBE_TOPIC);
+  Serial.println("Suscrito al topic: " AWS_IOT_SUBSCRIBE_TOPIC);
 
-  Serial.println("✅ Conectado a AWS IoT!");
+  Serial.println("Conectado a AWS IoT!");
 }

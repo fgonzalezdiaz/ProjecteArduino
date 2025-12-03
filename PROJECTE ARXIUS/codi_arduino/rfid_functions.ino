@@ -4,7 +4,7 @@
 #include <SPI.h>
 #include <MFRC522.h>
 
-// Definir els pins que utilitzarem
+// Definició dels pins del lector RFID
 #define SS_PIN 5
 #define RST_PIN 0
 

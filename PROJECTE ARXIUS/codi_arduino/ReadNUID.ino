@@ -5,29 +5,41 @@ int comprovar_int;
 #define TOPIC "test/topic"
 #define ledVerde 2
 #define ledRojo 15
+extern void reconnectMQTT();
 
 
 void setup() {
   Serial.begin(115200);
   pinMode(ledVerde, OUTPUT);
   pinMode(ledRojo, OUTPUT);
+  
+  // Asegurar que LEDs empiezan apagados
+  digitalWrite(ledVerde, LOW);
+  digitalWrite(ledRojo, LOW);
+  
   delay(3000);
+
+  // Configuració inicial de Wifi, AWS i RFID
   SetupWifi();
   delay(3000);
   SetupAWS();
   delay(3000);
   Serial.println("INICIANT SISTEMA RFID...");
-  Serial.println("ESPERANT TARGETA RFID...");
+  Serial.println("⌛ ESPERANT TARGETA RFID...");
   SetupRFID(); 
 }
 
 void loop() {
-
+  // Assegurar connexió MQTT
+  reconnectMQTT();
+  
   String tagID = "";
+  // Comprovar si s'ha detectat una targeta RFID
   if (CheckRFID(tagID)) {
+    // Evitar processar dues vegades la mateixa targeta
     if (tagID != ultimaTargeta) {
       
-      // Publicar el ID de la tarjeta al topic MQTT (ejemplo JSON)
+      // Crear i publicar el missatge JSON amb el tagID
       String payload = "{\"tagID\":\"" + tagID + "\"}";
       if (publishMessage(TOPIC, payload)) {
       } else {
@@ -36,6 +48,7 @@ void loop() {
 
       hayMensaje = false;
       
+      // Esperar fins rebre resposta d'AWS
       while(!hayMensaje){
           leerMensaje();   
           delay(10);
@@ -44,33 +57,41 @@ void loop() {
       Serial.println("TARGETA DETECTADA!");
       Serial.print("ID: ");
       Serial.println(tagID);
+
+      // Convertir resposta del AWS del string a enter 
       comprovar_int = comprovacio.toInt();
-      Serial.println(comprovar_int);
-      
+
+      // Control dels LEDs segons resposta
       if (comprovar_int == 1) {
-         digitalWrite(ledVerde, HIGH);
-         digitalWrite(ledRojo, LOW);
-         delay(1000);
-         digitalWrite(ledVerde, LOW);
-      } else if (comprovar_int == 0) {
-        digitalWrite(ledVerde, LOW);
-        digitalWrite(ledRojo, HIGH);
-        delay(2000);
+        Serial.println("✅ ACCES PERMÈS");
         digitalWrite(ledRojo, LOW);
+        digitalWrite(ledVerde, HIGH);
+      } else if (comprovar_int == 0) {
+        Serial.println("❌ ACCES DENEGAT");
+        digitalWrite(ledRojo, HIGH);
+        digitalWrite(ledVerde, LOW);
       } else {
-        Serial.println("Programma apagat");
+          Serial.println("❌ ACCES DENEGAT");
+          digitalWrite(ledVerde, LOW);
+          digitalWrite(ledRojo, HIGH);
       }
+
+      // Guardar última targeta per evitar repeticions
       ultimaTargeta = tagID;
-    }else{
-      Serial.println("ERROR : TARGETA REPETIDA");
-      Serial.println("ESPERANT NOVA TARGETA RFID...");
-      digitalWrite(ledRojo, HIGH);
+
+    } else {
+      // Targeta repetida, bloquejar accés
+      Serial.println("❌ ERROR : TARGETA REPETIDA");
       digitalWrite(ledVerde, LOW);
-      delay(2500);
-      digitalWrite(ledRojo, LOW);
+      digitalWrite(ledRojo, HIGH);
     }
-    delay(1000);
+    
+    // Parpelleig i reinicialització de LEDs
+    delay(2000);
+    digitalWrite(ledRojo, LOW);
+    digitalWrite(ledVerde, LOW);
+    // Comprovar l'estat de la WiFi després d'un cicle
     CheckWifi();
-    Serial.println("ESPERANT TARGETA RFID...");
+    Serial.println("⌛ ESPERANT TARGETA RFID...");
   }
 }
