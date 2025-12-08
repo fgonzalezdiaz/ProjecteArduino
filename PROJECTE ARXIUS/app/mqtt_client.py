@@ -51,7 +51,6 @@ def comprova_message(message: str):
     # Por eso creamos la sesion aqui directamente.
     db = Session(engine)
     try: 
-
         if not services.mqtt_get_user_id(message, db):
             publish_message(TOPIC_RESPONSE, "0", message)
         else:
